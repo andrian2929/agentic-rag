@@ -1,0 +1,15 @@
+{
+  "name": "Python App Container",
+  "dockerComposeFile": "docker-compose.yaml",
+  "service": "devcontainer",
+  "forwardPorts": ["elasticsearch:9200", "kibana:5601"],
+  "workspaceFolder": "/app",
+  "customizations": {
+    "vscode": {
+      "extensions": ["ms-python.python", "openai.chatgpt"],
+      "settings": {
+        "python.defaultInterpreterPath": "${workspaceFolder}/.venv/bin/python"
+      }
+    }
+  }
+}
