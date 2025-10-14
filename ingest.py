@@ -11,6 +11,9 @@ load_dotenv()
 def load_data():
     """Load data from a JSON file"""
     file_path = Path("data/translated-detail.json")
+    if not file_path.exists():
+        raise FileNotFoundError(f"The file does not exist.")
+
     with open(file_path, "r", encoding="utf-8") as f:
         data = json.load(f)
 
@@ -30,7 +33,6 @@ def load_data():
         for item in data
     ]
     return docs
-
 
 def ingest():
     documents = load_data()
