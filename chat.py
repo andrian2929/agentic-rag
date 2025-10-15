@@ -11,6 +11,7 @@ from langchain_community.query_constructors.elasticsearch import ElasticsearchTr
 from langchain.tools.retriever import create_retriever_tool
 from langgraph.graph import MessagesState
 from utils import retriver as SelfQueryRetriever
+from langgraph.prebuilt import ToolNode, tools_condition
 
 load_dotenv()
 
@@ -28,13 +29,57 @@ retriever_tool = create_retriever_tool(
     "Cari dokumen skripsi dari repositori institusi USU.",
 )
 
+
 def generate_query_or_respond(state: MessagesState):
     """Call the model to generate a response based on the current state. Given
     the question, it will decide to retrieve using the retriever tool, or simply respond to the user.
     """
     response = llm.bind_tools(tools=[retriever_tool]).invoke(state["messages"])
+    print("response:", response)
     return {"messages": [response]}
 
+
+def generate_answer(state: MessagesState):
+    """Generate an answer."""
+    GENERATE_PROMPT = (
+        "You are an assistant for question-answering tasks. "
+        "Use the following pieces of retrieved context to answer the question. "
+        "If you don't know the answer, just say that you don't know. "
+        "Use three sentences maximum and keep the answer concise.\n"
+        "Question: {question} \n"
+        "Context: {context}"
+    )
+    question = state["messages"][0].content
+    context = state["messages"][-1]
+    print(state["messages"])
+    prompt = GENERATE_PROMPT.format(question=question, context=context)
+
+    response = llm.invoke([{"role": "user", "content": prompt}])
+    return {"messages": [response]}
+
+
+workflow = StateGraph(MessagesState)
+workflow.add_node("generate_query_or_respond", generate_query_or_respond)
+workflow.add_node("retrieve", ToolNode([retriever_tool]))
+workflow.add_node("generate_answer", generate_answer)
+
+workflow.add_edge(START, "generate_query_or_respond")
+workflow.add_conditional_edges(
+    "generate_query_or_respond",
+    tools_condition,
+    {
+        "tools": "retrieve",
+        END: END,
+    },
+)
+workflow.add_edge("retrieve", "generate_answer")
+workflow.add_edge("generate_answer", END)
+
+graph = workflow.compile()
+
+png_data = graph.get_graph().draw_mermaid_png()
+with open("graph2.png", "wb") as f:
+    f.write(png_data)
 
 # def generate(state: State):
 #     return {"messages": [llm.invoke(state["messages"])]}
@@ -72,12 +117,13 @@ def generate_query_or_respond(state: MessagesState):
 #         break
 
 if __name__ == "__main__":
-    input = {
-        "messages": [
-            {
-                "role": "user",
-                "content": "Skripsi terbaru tentang algoritma CNN",
-            }
-        ]
-    }
-    generate_query_or_respond(input)["messages"][-1].pretty_print()
+    graph.invoke(
+        {
+            "messages": [
+                {
+                    "role": "user",
+                    "content": "Carilah skripsi yang ditulis oleh difanie",
+                }
+            ]
+        }
+    )
