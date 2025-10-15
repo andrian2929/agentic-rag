@@ -4,6 +4,7 @@ COPY --from=ghcr.io/astral-sh/uv:0.8.17 /uv /uvx /bin/
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
     build-essential \
+    openssh-client \
     curl \
     wget \
     git \
