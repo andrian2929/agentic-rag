@@ -8,6 +8,7 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
+
 def load_data():
     """Load data from a JSON file"""
     file_path = Path("data/translated-detail.json")
@@ -34,11 +35,14 @@ def load_data():
     ]
     return docs
 
+
 def ingest():
     documents = load_data()
     embeddings = GoogleGenerativeAIEmbeddings(model="models/gemini-embedding-001")
     elastic_vector_search = ElasticsearchStore(
-        es_url="http://elasticsearch:9200", index_name="thesis-index", embedding=embeddings
+        es_url="http://elasticsearch:9200",
+        index_name="thesis-index",
+        embedding=embeddings,
     )
     elastic_vector_search.add_documents(documents)
     print("Data ingested successfully.")

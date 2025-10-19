@@ -23,21 +23,25 @@ load_dotenv()
 class ChatState(TypedDict):
     messages: Annotated[list, add_messages]
 
+
 llm = ChatGoogleGenerativeAI(model="gemini-2.5-flash", temperature=0, tags=["chat"])
 embedding = GoogleGenerativeAIEmbeddings(model="models/gemini-embedding-001")
+
 
 @tool("document_retriever", parse_docstring=True)
 def retrieve_documents(query: str) -> List[Document]:
     """Mengambil dokumen dari repositori institusi USU berdarkan query yang diberikan.
-    
+
     Args:
         query: Pertanyaan lengkap dari user.
     """
     results = retriver().invoke(query)
     return results
 
+
 tools = [retrieve_documents]
 tool_node = ToolNode(tools)
+
 
 def generate_query_or_respond(state: MessagesState):
     """Call the model to generate a response based on the current state. Given
@@ -46,6 +50,7 @@ def generate_query_or_respond(state: MessagesState):
     print("CURRENT STATE", state["messages"])
     response = llm.bind_tools(tools).invoke(state["messages"])
     return {"messages": [response]}
+
 
 def generate_answer(state: MessagesState):
     """Generate an answer."""
@@ -117,13 +122,11 @@ if __name__ == "__main__":
             )
             for event in events:
                 print(event)
-                if isinstance(event['messages'][-1], AIMessage):
-                    event['messages'][-1].pretty_print()
-               
+                if isinstance(event["messages"][-1], AIMessage):
+                    event["messages"][-1].pretty_print()
+
         except KeyboardInterrupt:
             print("\nGoodbye!")
             break
         except Exception as e:
             print(f"Error: {e}")
-
-    
