@@ -24,5 +24,6 @@ dependencies = [
     "llama-index-utils-workflow>=0.4.1",
     "llama-index-vector-stores-chroma>=0.5.3",
     "python-dotenv>=1.1.1",
+    "streamlit>=1.50.0",
     "tiktoken>=0.11.0",
 ]

@@ -1,4 +1,4 @@
-from typing import Annotated
+from typing import Annotated, List
 from typing_extensions import TypedDict
 from langgraph.graph import StateGraph, START, END
 from langgraph.graph.message import add_messages
@@ -10,8 +10,12 @@ from langchain.retrievers.self_query.base import SelfQueryRetriever
 from langchain_community.query_constructors.elasticsearch import ElasticsearchTranslator
 from langchain.tools.retriever import create_retriever_tool
 from langgraph.graph import MessagesState
-from utils import retriver as SelfQueryRetriever
+from utils import retriver
 from langgraph.prebuilt import ToolNode, tools_condition
+from langgraph.checkpoint.memory import MemorySaver
+from langchain_core.messages import HumanMessage, AIMessage, ToolMessage, ToolCall
+from langchain_core.tools import tool
+from langchain.schema import Document
 
 load_dotenv()
 
@@ -19,48 +23,53 @@ load_dotenv()
 class ChatState(TypedDict):
     messages: Annotated[list, add_messages]
 
-
-llm = ChatGoogleGenerativeAI(model="gemini-2.5-flash", temperature=0)
+llm = ChatGoogleGenerativeAI(model="gemini-2.5-flash", temperature=0, tags=["chat"])
 embedding = GoogleGenerativeAIEmbeddings(model="models/gemini-embedding-001")
 
-retriever_tool = create_retriever_tool(
-    SelfQueryRetriever(),
-    "retrieve_document",
-    "Cari dokumen skripsi dari repositori institusi USU.",
-)
+@tool("document_retriever", parse_docstring=True)
+def retrieve_documents(query: str) -> List[Document]:
+    """Mengambil dokumen dari repositori institusi USU berdarkan query yang diberikan.
+    
+    Args:
+        query: Pertanyaan lengkap dari user.
+    """
+    results = retriver().invoke(query)
+    return results
 
+tools = [retrieve_documents]
+tool_node = ToolNode(tools)
 
 def generate_query_or_respond(state: MessagesState):
     """Call the model to generate a response based on the current state. Given
     the question, it will decide to retrieve using the retriever tool, or simply respond to the user.
     """
-    response = llm.bind_tools(tools=[retriever_tool]).invoke(state["messages"])
-    print("response:", response)
+    print("CURRENT STATE", state["messages"])
+    response = llm.bind_tools(tools).invoke(state["messages"])
     return {"messages": [response]}
-
 
 def generate_answer(state: MessagesState):
     """Generate an answer."""
     GENERATE_PROMPT = (
-        "You are an assistant for question-answering tasks. "
-        "Use the following pieces of retrieved context to answer the question. "
-        "If you don't know the answer, just say that you don't know. "
-        "Use three sentences maximum and keep the answer concise.\n"
-        "Question: {question} \n"
-        "Context: {context}"
+        "Kamu adalah asisten dari perpustakaan universitas sumatera utara untuk menjawab pertanyaan seputar skripsi mahasiswa "
+        "Gunakan konteks berikut untuk menjawab pertanyaan dengan tepat. "
+        "Jika kamu tidak tahu jawabannya, cukup katakan bahwa kamu tidak tahu. "
+        "Pertanyaan: {question} \n"
+        "Konteks: {context}"
     )
-    question = state["messages"][0].content
-    context = state["messages"][-1]
-    print(state["messages"])
-    prompt = GENERATE_PROMPT.format(question=question, context=context)
 
+    messages = state["messages"]
+    question = messages[-3].content
+    last_message = messages[-1]
+    docs = last_message.content
+
+    prompt = GENERATE_PROMPT.format(question=question, context=docs)
     response = llm.invoke([{"role": "user", "content": prompt}])
     return {"messages": [response]}
 
 
 workflow = StateGraph(MessagesState)
 workflow.add_node("generate_query_or_respond", generate_query_or_respond)
-workflow.add_node("retrieve", ToolNode([retriever_tool]))
+workflow.add_node("retrieve", tool_node)
 workflow.add_node("generate_answer", generate_answer)
 
 workflow.add_edge(START, "generate_query_or_respond")
@@ -75,11 +84,10 @@ workflow.add_conditional_edges(
 workflow.add_edge("retrieve", "generate_answer")
 workflow.add_edge("generate_answer", END)
 
-graph = workflow.compile()
+memory = MemorySaver()
+graph = workflow.compile(checkpointer=memory)
+config = {"configurable": {"thread_id": "abc123"}}
 
-png_data = graph.get_graph().draw_mermaid_png()
-with open("graph2.png", "wb") as f:
-    f.write(png_data)
 
 # def generate(state: State):
 #     return {"messages": [llm.invoke(state["messages"])]}
@@ -95,35 +103,27 @@ with open("graph2.png", "wb") as f:
 
 # config = {"configurable": {"thread_id": "1"}}
 
-# while True:
-#     try:
-#         user_input = input("User: ")
-#         if user_input.lower() in ["quit", "exit", "q"]:
-#             print("Goodbye!")
-#             break
-#         events = graph.stream(
-#             {"messages": [{"role": "user", "content": user_input}]},
-#             config,
-#             stream_mode="values",
-#         )
-#         for event in events:
-#             event["messages"][-1].pretty_print()
-#         print(list(graph.get_state_history(config)))
-#     except:
-#         # fallback if input() is not available
-#         user_input = "What do you know about LangGraph?"
-#         print("User: " + user_input)
-#         graph.invoke({"messages": [{"role": "user", "content": user_input}]})
-#         break
-
 if __name__ == "__main__":
-    graph.invoke(
-        {
-            "messages": [
-                {
-                    "role": "user",
-                    "content": "Carilah skripsi yang ditulis oleh difanie",
-                }
-            ]
-        }
-    )
+    while True:
+        try:
+            user_input = input("User: ")
+            if user_input.lower() in ["quit", "exit", "q"]:
+                print("Goodbye!")
+                break
+            events = graph.stream(
+                {"messages": [{"role": "user", "content": user_input}]},
+                config,
+                stream_mode="values",
+            )
+            for event in events:
+                print(event)
+                if isinstance(event['messages'][-1], AIMessage):
+                    event['messages'][-1].pretty_print()
+               
+        except KeyboardInterrupt:
+            print("\nGoodbye!")
+            break
+        except Exception as e:
+            print(f"Error: {e}")
+
+    

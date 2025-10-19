@@ -12,7 +12,7 @@ from langchain_community.query_constructors.elasticsearch import ElasticsearchTr
 load_dotenv()
 
 
-llm = ChatGoogleGenerativeAI(model="gemini-2.5-flash", temperature=0)
+llm = ChatGoogleGenerativeAI(model="gemini-2.5-flash", temperature=0, tags=["retriever"])
 embedding = GoogleGenerativeAIEmbeddings(model="models/gemini-embedding-001")
 
 
