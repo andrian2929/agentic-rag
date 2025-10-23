@@ -56,10 +56,10 @@ def generate_answer(state: MessagesState):
     """Generate an answer."""
     GENERATE_PROMPT = (
         "Kamu adalah asisten dari perpustakaan universitas sumatera utara untuk menjawab pertanyaan seputar skripsi mahasiswa "
-        "Gunakan konteks berikut untuk menjawab pertanyaan dengan tepat. "
+        "Untuk menjawab pertanyaannya. Gunakan data dibawah ini supaya kamu bisa memberikan jawaban yang tepat dan relevan. "
         "Jika kamu tidak tahu jawabannya, cukup katakan bahwa kamu tidak tahu. "
         "Pertanyaan: {question} \n"
-        "Konteks: {context}"
+        "Data: {context}"
     )
 
     messages = state["messages"]
