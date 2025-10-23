@@ -64,7 +64,7 @@ if st.sidebar.button("🧹 Clear this chat only"):
     st.session_state.threads[tid] = []
     st.rerun()
 
-st.title("Chat Repositori Skripsi USU")
+st.title("Chat Repositori Institusi USU")
 
 for message in messages:
     role = None
