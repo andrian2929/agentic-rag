@@ -94,16 +94,6 @@ graph = workflow.compile(checkpointer=memory)
 config = {"configurable": {"thread_id": "abc123"}}
 
 
-png_data = graph.get_graph().draw_mermaid_png()
-
-# 2. Define a filename
-file_name = "my_chat_graph.png"
-
-# 3. Write the bytes to a file in 'write binary' ('wb') mode
-with open(file_name, "wb") as f:
-    f.write(png_data)
-
-
 # def generate(state: State):
 #     return {"messages": [llm.invoke(state["messages"])]}
 
