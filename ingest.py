@@ -37,6 +37,7 @@ def load_data():
 
 
 def ingest():
+    """Ingest data into Elasticsearch vector store"""
     documents = load_data()
     embeddings = GoogleGenerativeAIEmbeddings(model="models/gemini-embedding-001")
     elastic_vector_search = ElasticsearchStore(
