@@ -1,3 +1,4 @@
+import json
 from typing import Annotated, List
 from typing_extensions import TypedDict
 from langgraph.graph import StateGraph, START, END
@@ -36,6 +37,20 @@ def retrieve_documents(query: str) -> List[Document]:
         query: Pertanyaan lengkap dari user.
     """
     results = retriver().invoke(query)
+
+    retrieved_json = []
+    for doc in results:
+        retrieved_json.append({
+            "page_content": doc.page_content,
+            "metadata": doc.metadata
+        })
+
+    with open("retrieval_log.jsonl", "a", encoding="utf-8") as f:
+        f.write(json.dumps({
+            "query": query,
+            "retrieved": retrieved_json
+        }, ensure_ascii=False) + "\n")
+
     return results
 
 
