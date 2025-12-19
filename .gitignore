@@ -11,6 +11,3 @@ wheels/
 
 # Environment variables
 .env
-
-# Data 
-data/
